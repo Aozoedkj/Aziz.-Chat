@@ -2,104 +2,142 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>منصة الدردشة - واجهة الهاتف الكاملة</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>منصة الدردشة - واجهة فيسبوك علوية</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* 📱 تصميم الهاتف الداكن والفصل التام ملء الشاشة */
-        body { 
-            font-family: system-ui, -apple-system, sans-serif; 
-            margin: 0; 
+        /* 📱 ضبط الأبعاد الكاملة للهاتف ومنع التداخل */
+        html, body {
+            height: 100%;
+            margin: 0;
             padding: 0;
-            background: #0f172a; 
-            direction: rtl; 
-            height: 100vh; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
             overflow: hidden;
+            background: #0f172a;
+            font-family: system-ui, -apple-system, sans-serif;
+            direction: rtl;
         }
         .hidden { display: none !important; }
 
+        /* الحاوية الرئيسية للهاتف */
         .app-container { 
             display: flex; 
             flex-direction: column; 
             height: 100vh; 
             width: 100%; 
-            max-width: 450px; 
-            background: #0f172a; 
             position: relative;
             overflow: hidden;
+            background: #0f172a;
         }
 
-        /* واجهة الشات الرئيسية */
-        .chat-area { 
-            flex-grow: 1;
-            display: flex; 
-            flex-direction: column; 
-            height: calc(100vh - 65px); 
-            width: 100%;
-        }
-
+        /* 🔝 الهيدر العلوي الأساسي للمكالمات */
         #chat-header { 
             background: #1e293b; 
-            padding: 15px; 
+            padding: 10px 15px; 
             font-weight: bold; 
             border-bottom: 1px solid #334155; 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             color: white;
+            height: 50px;
+            box-sizing: border-box;
+            z-index: 25;
         }
         #call-actions { display: flex; gap: 8px; }
-        .call-btn { border: none; padding: 6px 14px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .call-btn { border: none; padding: 5px 12px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; font-size: 11px; }
         .audio-btn { background: #10b981; }
         .video-btn { background: #8b5cf6; }
 
-        /* مساحة الفيديو عند الاتصال */
-        #video-container { 
+        /* 📱 شريط التنقل العلوي المطور (مثل أزرار فيسبوك تماماً) */
+        .sidebar-menu { 
+            height: 50px; 
+            width: 100%; 
+            background: #1e293b; 
             display: flex; 
-            flex-direction: column;
-            gap: 8px; 
-            background: #000; 
-            padding: 10px; 
+            justify-content: space-around; 
             align-items: center; 
+            border-bottom: 2px solid #334155;
+            z-index: 25; 
+            padding: 0;
         }
-        .video-box { display: flex; gap: 8px; justify-content: center; width: 100%; }
-        video { width: 130px; height: 100px; background: #222; border-radius: 8px; object-fit: cover; }
-        #endCallBtn { background: #ef4444; color: white; border: none; padding: 6px 16px; border-radius: 20px; cursor: pointer; font-weight: bold; font-size: 12px; }
+        .menu-item { 
+            flex: 1;
+            height: 100%; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            font-size: 22px; 
+            cursor: pointer; 
+            color: #94a3b8; 
+            transition: 0.2s;
+            position: relative;
+        }
+        /* خط سفلي أزرق عند تفعيل الزر مثل فيسبوك */
+        .menu-item.active { 
+            color: #38bdf8; 
+        }
+        .menu-item.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            right: 15%;
+            height: 3px;
+            background: #38bdf8;
+            border-radius: 3px 3px 0 0;
+        }
+        .logout { color: #f43f5e; }
 
+        /* مساحة عارض الفيديو */
+        #video-container { background: #000; padding: 8px; text-align: center; z-index: 21; }
+        .video-box { display: flex; gap: 8px; justify-content: center; }
+        video { width: 110px; height: 85px; background: #222; border-radius: 8px; object-fit: cover; }
+        #endCallBtn { background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 20px; margin-top: 5px; cursor: pointer; }
+
+        /* 🌐 واجهة الشات الرئيسية (تأخذ المساحة المتبقية بالكامل تحت شريط فيسبوك) */
+        .chat-area { 
+            flex: 1;
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            background: #0f172a;
+        }
+
+        /* صندوق الرسائل المعزز */
         #messages-box { 
-            flex-grow: 1; 
+            flex: 1; 
             padding: 15px; 
             overflow-y: auto; 
             display: flex; 
             flex-direction: column; 
             gap: 10px; 
+            background: #0f172a;
         }
         .message { background: #1e293b; color: white; padding: 10px 14px; border-radius: 16px 16px 0px 16px; max-width: 75%; align-self: flex-start; font-size: 14px; word-break: break-word; }
         .message.mine { background: #0284c7; align-self: flex-end; border-radius: 16px 16px 16px 0px; }
-        .message img { max-width: 100%; border-radius: 8px; margin-top: 5px; }
 
+        /* شريط الكتابة السفلي المحمي للهواتف */
         .chat-input-bar { 
             background: #1e293b; 
             padding: 10px; 
             display: flex; 
             gap: 8px; 
             align-items: center; 
-            border-top: 1px solid #334155; 
+            border-top: 1px solid #334155;
+            height: 60px;
+            box-sizing: border-box;
         }
-        .chat-input-bar input { flex-grow: 1; padding: 11px 14px; border-radius: 24px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
-        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 4px; }
-        .send-btn { background: #0284c7; color: white; border: none; padding: 9px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; }
+        .chat-input-bar input { flex: 1; padding: 10px 14px; border-radius: 24px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
+        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 4px; color: #94a3b8; }
+        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; }
 
-        /* الواجهات الفرعية ملء الشاشة فوق الشات */
+        /* 👤+👥 الواجهات الفرعية تفتح ملء الشاشة تماماً أسفل الشريط العلوي */
         .sub-sidebar { 
             position: absolute;
-            top: 0; 
+            top: 100px; /* تبدأ مباشرة بعد الهيدر وشريط الأزرار (50px + 50px) */
             left: 0;
             right: 0;
-            bottom: 65px; 
+            bottom: 0; 
             background: #0f172a; 
             padding: 20px; 
             box-sizing: border-box; 
@@ -109,71 +147,61 @@
         }
         .sub-sidebar h3 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #334155; color: #38bdf8; }
 
-        /* أشكال القوائم والأصدقاء */
+        /* قوائم الأصدقاء */
         .user-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: #1e293b; margin-bottom: 8px; cursor: pointer; }
         .user-item img, .avatar-large { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
         .avatar-large { width: 90px; height: 90px; display: block; margin: 15px auto; border: 2px solid #38bdf8; }
-        .user-info { flex-grow: 1; display: flex; flex-direction: column; text-align: right; }
+        .user-info { flex: 1; display: flex; flex-direction: column; text-align: right; }
         .user-info strong { font-size: 14px; }
         .user-info span { font-size: 11px; color: #94a3b8; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; margin-right: auto; }
         .online { background: #10b981; }
         .offline { background: #64748b; }
 
-        /* شريط التنقل السفلي الثابت للتحكم */
-        .sidebar-menu { 
-            height: 65px; 
-            width: 100%; 
-            background: #1e293b; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            border-top: 1px solid #334155;
-            z-index: 20; 
-        }
-        .menu-item { width: 55px; height: 55px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; cursor: pointer; color: #94a3b8; }
-        .menu-item.active { color: #38bdf8; background: #334155; }
-        .logout { color: #f43f5e; }
-
-        /* النوافذ التنبيهية المتوافقة */
+        /* المنبثقات */
         .modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 30; }
-        .modal-content { background: #1e293b; padding: 20px; border-radius: 16px; width: 260px; text-align: center; color: white; border: 1px solid #334155; }
-        .modal-content img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #38bdf8; }
+        .modal-content { background: #1e293b; padding: 20px; border-radius: 16px; width: 260px; text-align: center; color: white; }
         .modal-content button { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .modal-content .action-btn { background: #0284c7; color: white; }
-        .modal-content .close-btn { background: #334155; color: white; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
         
+        <div id="chat-header">
+            <span id="chat-title">الشات الجماعي للرفاق</span>
+            <div id="call-actions">
+                <button class="call-btn audio-btn" id="audioCallBtn">📞 صوت</button>
+                <button class="call-btn video-btn" id="videoCallBtn">📹 فيديو</button>
+            </div>
+        </div>
+
+        <div class="sidebar-menu">
+            <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
+            <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
+            <div class="menu-item" id="nav-users" onclick="navigateTo('users')">👥</div>
+            <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
+            <div class="menu-item logout" id="logoutBtn">🚪</div>
+        </div>
+
+        <div id="video-container" class="hidden">
+            <div class="video-box">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+            <button id="endCallBtn">قطع الاتصال</button>
+        </div>
+        
         <div class="chat-area" id="main-chat-screen">
-            <div id="chat-header">
-                <span id="chat-title">الشات الجماعي للرفاق</span>
-                <div id="call-actions">
-                    <button class="call-btn audio-btn" id="audioCallBtn">📞 صوت</button>
-                    <button class="call-btn video-btn" id="videoCallBtn">📹 فيديو</button>
-                </div>
-            </div>
-            
-            <div id="video-container" class="hidden">
-                <div class="video-box">
-                    <video id="localVideo" autoplay muted playsinline></video>
-                    <video id="remoteVideo" autoplay playsinline></video>
-                </div>
-                <button id="endCallBtn">قطع الاتصال</button>
-            </div>
-            
             <div id="messages-box"></div>
             
             <div class="chat-input-bar">
-                <button class="tool-btn" id="voiceBtn" title="تسجيل صوتي">🎤</button>
-                <button class="tool-btn" title="إرسال صورة" onclick="document.getElementById('send-image').click()">📷</button>
+                <button class="tool-btn" id="voiceBtn">🎤</button>
+                <button class="tool-btn" onclick="document.getElementById('send-image').click()">📷</button>
                 <input type="file" id="send-image" accept="image/*" class="hidden">
                 <input type="text" id="msg-input" placeholder="اكتب عبارة...">
-                <button class="tool-btn" title="إيموجي" onclick="document.getElementById('msg-input').value += '😀'">😀</button>
-                <button class="send-btn" id="sendBtn">إرسال</button>
+                <button class="tool-btn" onclick="document.getElementById('msg-input').value += '😀'">😀</button>
+                <button class="send-btn" id="send-btn">إرسال</button> 
             </div>
         </div>
 
@@ -190,20 +218,12 @@
         <div class="sub-sidebar" id="screen-profile" style="display: none;">
             <h3>الملف الشخصي</h3>
             <img class="avatar-large" id="prof-avatar" src="https://via.placeholder.com/90">
-            <input type="file" id="update-avatar" accept="image/*" class="hidden">
+            <input type="file" id="update-avatar" class="hidden" accept="image/*">
             <button style="width:100%; padding:6px; background:#334155; border:none; color:white; border-radius:6px; margin-bottom:10px;" onclick="document.getElementById('update-avatar').click()">تغيير الصورة</button>
             
             <input type="text" id="prof-name" placeholder="الاسم الكامل">
             <input type="date" id="prof-birth">
             <button style="width:100%; padding:12px; background:#0284c7; border:none; color:white; border-radius:8px; font-weight:bold; margin-top:10px;" id="saveProfileBtn">حفظ التعديلات</button>
-        </div>
-
-        <div class="sidebar-menu">
-            <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
-            <div class="menu-item" id="nav-users" onclick="navigateTo('users')">👥</div>
-            <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
-            <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
-            <div class="menu-item logout" id="logoutBtn">🚪</div>
         </div>
 
     </div>
@@ -213,12 +233,13 @@
             <img id="modal-avatar" src="">
             <h2 id="modal-name"></h2>
             <p id="modal-age"></p>
-            <button class="action-btn" id="modal-chat-btn">بدء الدردشة الحالية</button>
-            <button class="close-btn" id="closeModalBtn">إغلاق النافذة</button>
+            <button style="background:#0284c7; color:white;" id="modal-chat-btn">بدء الدردشة</button>
+            <button style="background:#334155; color:white;" id="closeModalBtn">إغلاق</button>
         </div>
     </div>
 
     <script>
+        // دالة الملاحة العلوية السلسة للفصل التام ملء الشاشة
         function navigateTo(target) {
             document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
             
@@ -230,7 +251,6 @@
             if (target === 'group') {
                 document.getElementById('main-chat-screen').style.display = 'flex';
                 document.getElementById('nav-group').classList.add('active');
-                // إعادة توجيه الشات للعام برمجياً بحسب محرك الـ client.js الخاص بك
                 if (typeof currentChatTarget !== 'undefined') currentChatTarget = 'group';
                 document.getElementById('chat-title').innerText = "الشات الجماعي للرفاق";
             } else {
