@@ -2,39 +2,310 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat Platform</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>منصة الدردشة الحية</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
-        /* إضافة بسيطة لضمان عمل الأزرار */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #0f172a;
+            font-family: system-ui, -apple-system, sans-serif;
+            direction: rtl;
+        }
         .hidden { display: none !important; }
-        #messages-box { height: 70vh; overflow-y: auto; border: 1px solid #ccc; padding: 10px; }
-        .message { margin: 5px; padding: 8px; border-radius: 10px; }
-        .mine { background: #dcf8c6; text-align: left; }
-        .others { background: #eee; text-align: right; }
+
+        .app-container { 
+            display: flex; 
+            flex-direction: column; 
+            height: 100vh; 
+            height: 100dvh; 
+            width: 100%; 
+            position: relative;
+            overflow: hidden;
+            background: #0f172a;
+        }
+
+        /* 🔝 الهيدر العلوي وأزرار الاتصال */
+        #chat-header { 
+            background: #1e293b; 
+            padding: 10px 15px; 
+            font-weight: bold; 
+            border-bottom: 1px solid #334155; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            color: white;
+            height: 50px;
+            box-sizing: border-box;
+            z-index: 25;
+        }
+        #call-actions { display: flex; gap: 8px; }
+        .call-btn { border: none; padding: 5px 12px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .audio-btn { background: #10b981; }
+        .video-btn { background: #8b5cf6; }
+
+        /* 📱 شريط القائمة الرئيسي (أيقونات دائرية زرقاء) */
+        .sidebar-menu { 
+            height: 50px; 
+            width: 100%; 
+            background: #1e293b; 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            border-bottom: 2px solid #334155;
+            z-index: 25; 
+        }
+        .menu-item { 
+            font-size: 24px; 
+            cursor: pointer; 
+            color: #94a3b8; 
+            transition: color 0.2s;
+            padding: 5px 10px;
+        }
+        .menu-item.active { color: #38bdf8; border-bottom: 2px solid #38bdf8; }
+        .logout { color: #f43f5e; }
+
+        /* 🌐 واجهة الدردشة */
+        .chat-area { 
+            flex: 1;
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+            background: #0f172a;
+            position: relative;
+        }
+
+        #messages-box { 
+            flex: 1; 
+            padding: 15px; 
+            overflow-y: auto; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+        .message { background: #1e293b; color: white; padding: 10px 14px; border-radius: 16px 16px 0px 16px; max-width: 75%; align-self: flex-start; font-size: 14px; word-break: break-word; }
+        .message.mine { background: #0284c7; align-self: flex-end; border-radius: 16px 16px 16px 0px; }
+
+        /* 🔒 شريط الإدخال السفلي الشامل */
+        .chat-input-bar { 
+            background: #1e293b; 
+            padding: 10px; 
+            display: flex; 
+            gap: 8px; 
+            align-items: center; 
+            border-top: 1px solid #334155;
+            height: 60px;
+            box-sizing: border-box;
+        }
+        .chat-input-bar input { flex: 1; padding: 10px 14px; border-radius: 24px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
+        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; }
+        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; }
+
+        /* 😀 قائمة منبثقة متكاملة للإيموجي */
+        .emoji-picker {
+            position: absolute;
+            bottom: 65px;
+            left: 10px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            font-size: 20px;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .emoji-item { cursor: pointer; text-align: center; }
+
+        /* 👤+👥 الواجهات الفرعية المخصصة لقوائم العرض والملف الشخصي */
+        .sub-sidebar { 
+            position: absolute;
+            top: 102px; /* تحت الهيدر والملاحة */
+            left: 0;
+            right: 0;
+            bottom: 0; 
+            background: #0f172a; 
+            box-sizing: border-box; 
+            overflow-y: auto; 
+            z-index: 30; 
+            color: white;
+            display: none; 
+        }
+        .sub-sidebar h3 { margin: 0; padding: 15px; border-bottom: 1px solid #334155; color: #38bdf8; background: #1e293b; }
+
+        /* ✨ تنسيق شبكة الأصدقاء المتصلين الثلاثية الاحترافية */
+        #users-list {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
+            padding: 2px;
+        }
+        .user-grid-card {
+            position: relative;
+            width: 100%;
+            padding-top: 100%;
+            background: #1e293b;
+            overflow: hidden;
+            cursor: pointer;
+        }
+        .user-grid-card img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .user-grid-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(2px);
+            padding: 6px;
+            text-align: center;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .user-grid-info .name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .user-grid-info .age { font-size: 10px; color: #cbd5e1; margin-top: 2px; }
+        .online-badge { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #10b981; border-radius: 50%; border: 1.5px solid #0f172a; z-index: 5; }
+
+        /* واجهة تعديل البروفايل المنسقة */
+        .profile-container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .profile-avatar-wrapper { position: relative; width: 120px; height: 120px; border-radius: 50%; border: 3px solid #38bdf8; overflow: hidden; margin-bottom: 15px; }
+        .profile-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .sub-sidebar input[type="text"] { width: 100%; max-width: 350px; padding: 12px; margin-top: 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; box-sizing: border-box; }
+        .save-btn { width: 100%; max-width: 350px; margin-top: 20px; padding: 12px; background: #0284c7; border: none; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="chat-header">
-        <h3 id="chat-title">الشات الجماعي</h3>
-        <button id="audioCallBtn">📞 صوت</button>
-        <button id="videoCallBtn">📹 فيديو</button>
+    <div class="app-container">
+        
+        <div id="chat-header">
+            <span id="chat-title">الشات الجماعي للرفاق</span>
+            <div id="call-actions">
+                <button class="call-btn audio-btn" id="audioCallBtn">📞 صوت</button>
+                <button class="call-btn video-btn" id="videoCallBtn">📹 فيديو</button>
+            </div>
+        </div>
+
+        <div class="sidebar-menu">
+            <div class="menu-item logout" id="logoutBtn" onclick="handleLogout()">🚪</div>
+            <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
+            <div class="menu-item" id="nav-users" onclick="navigateTo('users')">👥</div>
+            <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
+            <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
+        </div>
+        
+        <div class="chat-area" id="main-chat-screen">
+            <div id="messages-box"></div>
+            
+            <div class="chat-input-bar">
+                <button class="tool-btn" id="voiceBtn">🎤</button>
+                <button class="tool-btn" id="imageBtn" onclick="document.getElementById('send-image').click()">📷</button>
+                <input type="file" id="send-image" accept="image/*" class="hidden">
+                
+                <input type="text" id="msg-input" placeholder="اكتب عبارة...">
+                
+                <button class="tool-btn" id="emojiBtn" onclick="toggleEmojiPicker()">😀</button>
+                <div id="emojiPicker" class="emoji-picker hidden"></div>
+
+                <button class="send-btn" id="send-btn" onclick="sendMessageDirectly()">إرسال</button> 
+            </div>
+        </div>
+
+        <div class="sub-sidebar" id="screen-users">
+            <h3>الأصدقاء المتصلين</h3>
+            <div id="users-list"></div>
+        </div>
+
+        <div class="sub-sidebar" id="screen-chats">
+            <h3>المحادثات الحالية</h3>
+            <div id="active-chats-list"></div>
+        </div>
+
+        <div class="sub-sidebar" id="screen-profile">
+            <h3>الملف الشخصي</h3>
+            <div class="profile-container">
+                <div class="profile-avatar-wrapper" onclick="document.getElementById('update-avatar').click()">
+                    <img id="prof-avatar" src="/uploads/default-avatar.png" alt="الصورة الشخصية">
+                </div>
+                <input type="file" id="update-avatar" class="hidden" accept="image/*">
+                <button style="padding: 6px 12px; background: #334155; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="document.getElementById('update-avatar').click()">تغيير الصورة</button>
+                
+                <input type="text" id="prof-name" placeholder="الاسم الكامل">
+                <input type="text" id="prof-birth" placeholder="العمر (مثال: 16-17 أو 22)">
+                
+                <button class="save-btn" id="saveProfileBtn">حفظ التعديلات</button>
+            </div>
+        </div>
+
     </div>
 
-    <div id="messages-box"></div>
+    <script>
+        let currentChatTarget = 'group'; 
 
-    <div class="chat-input-bar">
-        <button id="voiceBtn">🎤</button>
-        <button id="imageBtn" onclick="document.getElementById('send-image').click()">📷</button>
-        <input type="file" id="send-image" class="hidden" accept="image/*">
-        
-        <input type="text" id="msg-input" placeholder="اكتب رسالة...">
-        
-        <button id="emojiBtn">😀</button>
-        <button id="send-btn">إرسال</button>
-    </div>
+        function navigateTo(target) {
+            document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('screen-profile').style.display = 'none';
+            document.getElementById('screen-users').style.display = 'none';
+            document.getElementById('screen-chats').style.display = 'none';
+            document.getElementById('main-chat-screen').style.display = 'none';
 
+            if (target === 'group') {
+                currentChatTarget = 'group';
+                document.getElementById('main-chat-screen').style.display = 'flex';
+                document.getElementById('nav-group').classList.add('active');
+                document.getElementById('chat-title').innerText = "الشات الجماعي للرفاق";
+                scrollToBottom();
+            } else {
+                document.getElementById(`screen-${target}`).style.display = 'block';
+                document.getElementById(`nav-${target}`).classList.add('active');
+            }
+        }
+
+        function handleLogout() {
+            if(confirm("هل أنت متأكد من رغبتك في تسجيل الخروج؟")) {
+                localStorage.clear();
+                window.location.href = "/";
+            }
+        }
+
+        function scrollToBottom() {
+            const box = document.getElementById('messages-box');
+            if(box) box.scrollTop = box.scrollHeight;
+        }
+
+        // بناء قائمة الإيموجي ديناميكياً
+        const emojis = ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕'];
+        const picker = document.getElementById('emojiPicker');
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.className = 'emoji-item';
+            span.innerText = emoji;
+            span.onclick = () => {
+                document.getElementById('msg-input').value += emoji;
+                picker.classList.add('hidden');
+            };
+            picker.appendChild(span);
+        });
+
+        function toggleEmojiPicker() {
+            picker.classList.toggle('hidden');
+        }
+    </script>
     <script src="client.js"></script>
 </body>
 </html>
