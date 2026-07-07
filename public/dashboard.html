@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>منصة الدردشة الفورية</title>
+    <title>منصة الدردشة المستقرة</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         html, body {
@@ -20,6 +20,7 @@
         .app-container { 
             display: flex; 
             flex-direction: column; 
+            height: 100vh; 
             height: 100dvh; 
             width: 100%; 
             position: relative;
@@ -41,8 +42,12 @@
             box-sizing: border-box;
             z-index: 25;
         }
+        #call-actions { display: flex; gap: 8px; }
+        .call-btn { border: none; padding: 5px 12px; border-radius: 20px; color: white; font-weight: bold; cursor: pointer; font-size: 11px; }
+        .audio-btn { background: #10b981; }
+        .video-btn { background: #8b5cf6; }
 
-        /* 📱 شريط الأزرار العلوي */
+        /* 📱 شريط الملاحة العلوي */
         .sidebar-menu { 
             height: 50px; 
             width: 100%; 
@@ -78,6 +83,12 @@
         }
         .logout { color: #f43f5e; }
 
+        /* مساحة الفيديو عند الاتصال */
+        #video-container { background: #000; padding: 8px; text-align: center; z-index: 21; }
+        .video-box { display: flex; gap: 8px; justify-content: center; }
+        video { width: 110px; height: 85px; background: #222; border-radius: 8px; object-fit: cover; }
+        #endCallBtn { background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 20px; margin-top: 5px; cursor: pointer; }
+
         /* 🌐 واجهة الدردشة المرنة */
         .chat-area { 
             flex: 1;
@@ -95,10 +106,12 @@
             display: flex; 
             flex-direction: column; 
             gap: 10px; 
+            background: #0f172a;
         }
         .message { background: #1e293b; color: white; padding: 10px 14px; border-radius: 16px 16px 0px 16px; max-width: 75%; align-self: flex-start; font-size: 14px; word-break: break-word; line-height: 1.4; }
         .message.mine { background: #0284c7; align-self: flex-end; border-radius: 16px 16px 16px 0px; }
 
+        /* 🔒 شريط الكتابة السفلي الشامل (المايك، الكاميرا، النص، الإيموجي، الإرسال) */
         .chat-input-bar { 
             background: #1e293b; 
             padding: 10px; 
@@ -108,11 +121,13 @@
             border-top: 1px solid #334155;
             height: 60px;
             box-sizing: border-box;
+            width: 100%;
         }
         .chat-input-bar input { flex: 1; padding: 10px 14px; border-radius: 24px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
-        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; }
+        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 4px; color: #94a3b8; display: flex; align-items: center; }
+        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; font-size: 14px; }
 
-        /* 👤+👥 الواجهات الفرعية */
+        /* 👤+👥 الواجهات الفرعية المخصصة لقوائم العرض والملف الشخصي */
         .sub-sidebar { 
             position: absolute;
             top: 100px; 
@@ -126,42 +141,37 @@
             color: white;
             display: none; 
         }
-        .sub-sidebar h3 { margin: 0; padding: 15px; border-bottom: 1px solid #334155; color: #38bdf8; background: #1e293b; }
+        .sub-sidebar h3 { margin: 0; padding: 15px; border-bottom: 1px solid #334155; color: #38bdf8; background: #1e293b; font-size: 16px; }
 
-        /* ✨ تحويل قائمة المستخدمين إلى شبكة ثلاثية مثل فيسبوك وانستغرام تماماً */
+        /* ✨ تنسيق شبكة الأصدقاء المتصلين الثلاثية الاحترافية */
         #users-list {
             display: grid;
-            grid-template-columns: repeat(3, 1fr); /* 3 أعمدة متساوية */
-            gap: 2px; /* مسافة بسيطة جداً بين المربعات */
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2px;
             padding: 2px;
         }
-
-        /* تصميم الكرت المربع للمستخدم */
         .user-grid-card {
             position: relative;
             width: 100%;
-            padding-top: 100%; /* جعل العنصر مربعاً متساوي الأبعاد */
+            padding-top: 100%;
             background: #1e293b;
             overflow: hidden;
             cursor: pointer;
         }
-
         .user-grid-card img {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            object-fit: cover; /* ملء المربع تماماً دون تمديد مشوه */
+            object-fit: cover;
         }
-
-        /* تفاصيل الاسم والعمر أسفل الكرت وبشريط شفاف */
         .user-grid-info {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
-            background: rgba(0, 0, 0, 0.6); /* شريط داكن شفاف */
+            background: rgba(0, 0, 0, 0.6);
             backdrop-filter: blur(2px);
             padding: 6px;
             text-align: center;
@@ -169,53 +179,30 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
         }
+        .user-grid-info .name { font-size: 13px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%; }
+        .user-grid-info .age { font-size: 10px; color: #cbd5e1; margin-top: 2px; }
+        .online-badge { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #10b981; border-radius: 50%; border: 1.5px solid #0f172a; z-index: 5; }
 
-        .user-grid-info .name {
-            font-size: 13px;
-            font-weight: bold;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            width: 100%;
-        }
-
-        .user-grid-info .age {
-            font-size: 10px;
-            color: #cbd5e1;
-            margin-top: 2px;
-        }
-
-        /* نقطة تظهر حالة الاتصال بالزاوية */
-        .online-badge {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            width: 10px;
-            height: 10px;
-            background: #10b981;
-            border-radius: 50%;
-            border: 1.5px solid #0f172a;
-            z-index: 5;
-        }
-
+        /* قائمة المحادثات الجارية والملف الشخصي */
         .chat-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: #1e293b; margin: 10px; cursor: pointer; }
+        .chat-item img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
         .avatar-large { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 15px auto; border: 2px solid #38bdf8; }
-        .sub-sidebar input[type="text"] { width: calc(100% - 30px); padding: 12px; margin: 0 15px 12px 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; }
+        .sub-sidebar input[type="text"] { width: calc(100% - 30px); padding: 12px; margin: 12px 15px 0px 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
         
-        <!-- الهيدر -->
         <div id="chat-header">
             <span id="chat-title">الشات الجماعي للرفاق</span>
-            <div></div>
+            <div id="call-actions">
+                <button class="call-btn audio-btn" id="audioCallBtn">📞 صوت</button>
+                <button class="call-btn video-btn" id="videoCallBtn">📹 فيديو</button>
+            </div>
         </div>
 
-        <!-- أزرار الملاحة العلوي -->
         <div class="sidebar-menu">
             <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
             <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
@@ -223,67 +210,52 @@
             <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
             <div class="menu-item logout" id="logoutBtn" onclick="handleLogout()">🚪</div>
         </div>
+
+        <div id="video-container" class="hidden">
+            <div class="video-box">
+                <video id="localVideo" autoplay muted playsinline></video>
+                <video id="remoteVideo" autoplay playsinline></video>
+            </div>
+            <button id="endCallBtn">قطع الاتصال</button>
+        </div>
         
-        <!-- واجهة الشات المرنة -->
         <div class="chat-area" id="main-chat-screen">
             <div id="messages-box"></div>
+            
             <div class="chat-input-bar">
+                <button class="tool-btn" id="voiceBtn">🎤</button>
+                
+                <button class="tool-btn" id="imageBtn" onclick="document.getElementById('send-image').click()">📷</button>
+                <input type="file" id="send-image" accept="image/*" class="hidden">
+                
                 <input type="text" id="msg-input" placeholder="اكتب عبارة...">
-                <button class="send-btn" onclick="sendMessageDirectly()">إرسال</button> 
+                
+                <button class="tool-btn" id="emojiBtn" onclick="document.getElementById('msg-input').value += '😀'">😀</button>
+                
+                <button class="send-btn" id="send-btn" onclick="sendMessageDirectly()">إرسال</button> 
             </div>
         </div>
 
-        <!-- 👥 واجهة المستخدمين المتصلين بالشكل الشبكي المطلوب -->
         <div class="sub-sidebar" id="screen-users">
             <h3>الأصدقاء المتصلين</h3>
-            <div id="users-list">
-                
-                <!-- مثال تجريبي رقم 1 (مثل عيسى) -->
-                <div class="user-grid-card" onclick="openPrivateChat('عيسى', 'user1')">
-                    <div class="online-badge"></div>
-                    <img src="https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=300">
-                    <div class="user-grid-info">
-                        <span class="name">عيسى</span>
-                        <span class="age">20 سنوات</span>
-                    </div>
-                </div>
-
-                <!-- مثال تجريبي رقم 2 (مثل سارة) -->
-                <div class="user-grid-card" onclick="openPrivateChat('Sarah', 'user2')">
-                    <div class="online-badge"></div>
-                    <img src="https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=300">
-                    <div class="user-grid-info">
-                        <span class="name">Sarah</span>
-                        <span class="age">19 سنوات</span>
-                    </div>
-                </div>
-
-                <!-- مثال تجريبي رقم 3 (مثل عبدو) -->
-                <div class="user-grid-card" onclick="openPrivateChat('Abdou', 'user3')">
-                    <div class="online-badge"></div>
-                    <img src="https://images.unsplash.com/photo-1540569014015-19a7be504e3a?w=300">
-                    <div class="user-grid-info">
-                        <span class="name">Abdou</span>
-                        <span class="age">15 سنوات</span>
-                    </div>
-                </div>
-
-            </div>
+            <div id="users-list"></div>
         </div>
 
-        <!-- واجهة المحادثات الحالية -->
         <div class="sub-sidebar" id="screen-chats">
             <h3>المحادثات الحالية</h3>
             <div id="active-chats-list"></div>
         </div>
 
-        <!-- واجهة الملف الشخصي -->
         <div class="sub-sidebar" id="screen-profile">
             <h3>الملف الشخصي</h3>
             <img class="avatar-large" id="prof-avatar" src="https://via.placeholder.com/90">
+            <input type="file" id="update-avatar" class="hidden" accept="image/*">
+            <button style="width:calc(100% - 30px); margin:10px 15px; padding:6px; background:#334155; border:none; color:white; border-radius:6px; cursor:pointer;" onclick="document.getElementById('update-avatar').click()">تغيير الصورة</button>
+            
             <input type="text" id="prof-name" placeholder="الاسم الكامل">
-            <input type="text" id="prof-birth" placeholder="العمر مثل: 16-17">
-            <button style="width:calc(100% - 30px); margin:0 15px; padding:12px; background:#0284c7; border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer;" id="saveProfileBtn">حفظ التعديلات</button>
+            <input type="text" id="prof-birth" placeholder="العمر (مثال: 16-17 أو 22)">
+            
+            <button style="width:calc(100% - 30px); margin:15px 15px 0 15px; padding:12px; background:#0284c7; border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer;" id="saveProfileBtn">حفظ التعديلات</button>
         </div>
 
     </div>
@@ -310,41 +282,25 @@
             }
         }
 
-        function openPrivateChat(username, userId) {
-            currentChatTarget = userId;
-            document.getElementById('screen-users').style.display = 'none';
-            document.getElementById('main-chat-screen').style.display = 'flex';
-            document.getElementById('chat-title').innerText = `🔐 محادثة خاصة مع: ${username}`;
-            document.getElementById('messages-box').innerHTML = `<div style="text-align:center; color:#94a3b8; font-size:12px; margin: 10px 0;">بداية الدردشة مع ${username}</div>`;
-            scrollToBottom();
-        }
-
-        function sendMessageDirectly() {
-            const input = document.getElementById('msg-input');
-            const messageText = input.value.trim();
-            if(!messageText) return;
-
-            appendMessage(messageText, 'mine');
-            if(typeof socket !== 'undefined') {
-                socket.emit('chatMessage', { text: messageText, to: currentChatTarget });
+        function handleLogout() {
+            if(confirm("هل أنت متأكد من رغبتك في تسجيل الخروج؟")) {
+                localStorage.clear();
+                window.location.href = "/";
             }
-            input.value = '';
-            setTimeout(scrollToBottom, 50);
-        }
-
-        function appendMessage(text, type) {
-            const box = document.getElementById('messages-box');
-            const msgDiv = document.createElement('div');
-            msgDiv.className = `message ${type}`;
-            msgDiv.innerText = text;
-            box.appendChild(msgDiv);
-            scrollToBottom();
         }
 
         function scrollToBottom() {
             const box = document.getElementById('messages-box');
             if(box) box.scrollTop = box.scrollHeight;
         }
+
+        document.getElementById('msg-input').addEventListener('focus', () => {
+            setTimeout(scrollToBottom, 300);
+        });
+
+        document.getElementById('msg-input').addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') sendMessageDirectly();
+        });
     </script>
     <script src="client.js"></script>
 </body>
