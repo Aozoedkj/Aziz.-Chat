@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>منصة الدردشة المستقرة</title>
+    <title>منصة الدردشة الحية</title>
     <script src="/socket.io/socket.io.js"></script>
     <style>
         html, body {
@@ -28,7 +28,7 @@
             background: #0f172a;
         }
 
-        /* 🔝 الهيدر العلوي */
+        /* 🔝 الهيدر العلوي وأزرار الاتصال */
         #chat-header { 
             background: #1e293b; 
             padding: 10px 15px; 
@@ -47,7 +47,7 @@
         .audio-btn { background: #10b981; }
         .video-btn { background: #8b5cf6; }
 
-        /* 📱 شريط الملاحة العلوي */
+        /* 📱 شريط القائمة الرئيسي (أيقونات دائرية زرقاء) */
         .sidebar-menu { 
             height: 50px; 
             width: 100%; 
@@ -57,39 +57,18 @@
             align-items: center; 
             border-bottom: 2px solid #334155;
             z-index: 25; 
-            padding: 0;
         }
         .menu-item { 
-            flex: 1;
-            height: 100%; 
-            display: flex; 
-            justify-content: center; 
-            align-items: center; 
-            font-size: 22px; 
+            font-size: 24px; 
             cursor: pointer; 
             color: #94a3b8; 
-            position: relative;
+            transition: color 0.2s;
+            padding: 5px 10px;
         }
-        .menu-item.active { color: #38bdf8; }
-        .menu-item.active::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            left: 15%;
-            right: 15%;
-            height: 3px;
-            background: #38bdf8;
-            border-radius: 3px 3px 0 0;
-        }
+        .menu-item.active { color: #38bdf8; border-bottom: 2px solid #38bdf8; }
         .logout { color: #f43f5e; }
 
-        /* مساحة الفيديو عند الاتصال */
-        #video-container { background: #000; padding: 8px; text-align: center; z-index: 21; }
-        .video-box { display: flex; gap: 8px; justify-content: center; }
-        video { width: 110px; height: 85px; background: #222; border-radius: 8px; object-fit: cover; }
-        #endCallBtn { background: #ef4444; color: white; border: none; padding: 4px 12px; border-radius: 20px; margin-top: 5px; cursor: pointer; }
-
-        /* 🌐 واجهة الدردشة المرنة */
+        /* 🌐 واجهة الدردشة */
         .chat-area { 
             flex: 1;
             display: flex; 
@@ -106,12 +85,11 @@
             display: flex; 
             flex-direction: column; 
             gap: 10px; 
-            background: #0f172a;
         }
-        .message { background: #1e293b; color: white; padding: 10px 14px; border-radius: 16px 16px 0px 16px; max-width: 75%; align-self: flex-start; font-size: 14px; word-break: break-word; line-height: 1.4; }
+        .message { background: #1e293b; color: white; padding: 10px 14px; border-radius: 16px 16px 0px 16px; max-width: 75%; align-self: flex-start; font-size: 14px; word-break: break-word; }
         .message.mine { background: #0284c7; align-self: flex-end; border-radius: 16px 16px 16px 0px; }
 
-        /* 🔒 شريط الكتابة السفلي الشامل (المايك، الكاميرا، النص، الإيموجي، الإرسال) */
+        /* 🔒 شريط الإدخال السفلي الشامل */
         .chat-input-bar { 
             background: #1e293b; 
             padding: 10px; 
@@ -121,16 +99,35 @@
             border-top: 1px solid #334155;
             height: 60px;
             box-sizing: border-box;
-            width: 100%;
         }
         .chat-input-bar input { flex: 1; padding: 10px 14px; border-radius: 24px; border: 1px solid #334155; background: #0f172a; color: white; outline: none; }
-        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 0 4px; color: #94a3b8; display: flex; align-items: center; }
-        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        .tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; }
+        .send-btn { background: #0284c7; color: white; border: none; padding: 8px 18px; border-radius: 24px; font-weight: bold; cursor: pointer; }
+
+        /* 😀 قائمة منبثقة متكاملة للإيموجي */
+        .emoji-picker {
+            position: absolute;
+            bottom: 65px;
+            left: 10px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 10px;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 8px;
+            font-size: 20px;
+            z-index: 100;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .emoji-item { cursor: pointer; text-align: center; }
 
         /* 👤+👥 الواجهات الفرعية المخصصة لقوائم العرض والملف الشخصي */
         .sub-sidebar { 
             position: absolute;
-            top: 100px; 
+            top: 102px; /* تحت الهيدر والملاحة */
             left: 0;
             right: 0;
             bottom: 0; 
@@ -141,7 +138,7 @@
             color: white;
             display: none; 
         }
-        .sub-sidebar h3 { margin: 0; padding: 15px; border-bottom: 1px solid #334155; color: #38bdf8; background: #1e293b; font-size: 16px; }
+        .sub-sidebar h3 { margin: 0; padding: 15px; border-bottom: 1px solid #334155; color: #38bdf8; background: #1e293b; }
 
         /* ✨ تنسيق شبكة الأصدقاء المتصلين الثلاثية الاحترافية */
         #users-list {
@@ -184,11 +181,12 @@
         .user-grid-info .age { font-size: 10px; color: #cbd5e1; margin-top: 2px; }
         .online-badge { position: absolute; top: 8px; right: 8px; width: 10px; height: 10px; background: #10b981; border-radius: 50%; border: 1.5px solid #0f172a; z-index: 5; }
 
-        /* قائمة المحادثات الجارية والملف الشخصي */
-        .chat-item { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: #1e293b; margin: 10px; cursor: pointer; }
-        .chat-item img { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
-        .avatar-large { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; display: block; margin: 15px auto; border: 2px solid #38bdf8; }
-        .sub-sidebar input[type="text"] { width: calc(100% - 30px); padding: 12px; margin: 12px 15px 0px 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; box-sizing: border-box; }
+        /* واجهة تعديل البروفايل المنسقة */
+        .profile-container { display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .profile-avatar-wrapper { position: relative; width: 120px; height: 120px; border-radius: 50%; border: 3px solid #38bdf8; overflow: hidden; margin-bottom: 15px; }
+        .profile-avatar-wrapper img { width: 100%; height: 100%; object-fit: cover; }
+        .sub-sidebar input[type="text"] { width: 100%; max-width: 350px; padding: 12px; margin-top: 15px; border-radius: 8px; border: 1px solid #334155; background: #1e293b; color: white; outline: none; box-sizing: border-box; }
+        .save-btn { width: 100%; max-width: 350px; margin-top: 20px; padding: 12px; background: #0284c7; border: none; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -204,19 +202,11 @@
         </div>
 
         <div class="sidebar-menu">
-            <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
-            <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
-            <div class="menu-item" id="nav-users" onclick="navigateTo('users')">👥</div>
-            <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
             <div class="menu-item logout" id="logoutBtn" onclick="handleLogout()">🚪</div>
-        </div>
-
-        <div id="video-container" class="hidden">
-            <div class="video-box">
-                <video id="localVideo" autoplay muted playsinline></video>
-                <video id="remoteVideo" autoplay playsinline></video>
-            </div>
-            <button id="endCallBtn">قطع الاتصال</button>
+            <div class="menu-item" id="nav-profile" onclick="navigateTo('profile')">👤</div>
+            <div class="menu-item" id="nav-users" onclick="navigateTo('users')">👥</div>
+            <div class="menu-item" id="nav-chats" onclick="navigateTo('chats')">💬</div>
+            <div class="menu-item active" id="nav-group" onclick="navigateTo('group')">🌐</div>
         </div>
         
         <div class="chat-area" id="main-chat-screen">
@@ -224,14 +214,14 @@
             
             <div class="chat-input-bar">
                 <button class="tool-btn" id="voiceBtn">🎤</button>
-                
                 <button class="tool-btn" id="imageBtn" onclick="document.getElementById('send-image').click()">📷</button>
                 <input type="file" id="send-image" accept="image/*" class="hidden">
                 
                 <input type="text" id="msg-input" placeholder="اكتب عبارة...">
                 
-                <button class="tool-btn" id="emojiBtn" onclick="document.getElementById('msg-input').value += '😀'">😀</button>
-                
+                <button class="tool-btn" id="emojiBtn" onclick="toggleEmojiPicker()">😀</button>
+                <div id="emojiPicker" class="emoji-picker hidden"></div>
+
                 <button class="send-btn" id="send-btn" onclick="sendMessageDirectly()">إرسال</button> 
             </div>
         </div>
@@ -248,14 +238,18 @@
 
         <div class="sub-sidebar" id="screen-profile">
             <h3>الملف الشخصي</h3>
-            <img class="avatar-large" id="prof-avatar" src="https://via.placeholder.com/90">
-            <input type="file" id="update-avatar" class="hidden" accept="image/*">
-            <button style="width:calc(100% - 30px); margin:10px 15px; padding:6px; background:#334155; border:none; color:white; border-radius:6px; cursor:pointer;" onclick="document.getElementById('update-avatar').click()">تغيير الصورة</button>
-            
-            <input type="text" id="prof-name" placeholder="الاسم الكامل">
-            <input type="text" id="prof-birth" placeholder="العمر (مثال: 16-17 أو 22)">
-            
-            <button style="width:calc(100% - 30px); margin:15px 15px 0 15px; padding:12px; background:#0284c7; border:none; color:white; border-radius:8px; font-weight:bold; cursor:pointer;" id="saveProfileBtn">حفظ التعديلات</button>
+            <div class="profile-container">
+                <div class="profile-avatar-wrapper" onclick="document.getElementById('update-avatar').click()">
+                    <img id="prof-avatar" src="/uploads/default-avatar.png" alt="الصورة الشخصية">
+                </div>
+                <input type="file" id="update-avatar" class="hidden" accept="image/*">
+                <button style="padding: 6px 12px; background: #334155; border: none; color: white; border-radius: 4px; cursor: pointer; font-size: 12px;" onclick="document.getElementById('update-avatar').click()">تغيير الصورة</button>
+                
+                <input type="text" id="prof-name" placeholder="الاسم الكامل">
+                <input type="text" id="prof-birth" placeholder="العمر (مثال: 16-17 أو 22)">
+                
+                <button class="save-btn" id="saveProfileBtn">حفظ التعديلات</button>
+            </div>
         </div>
 
     </div>
@@ -294,13 +288,23 @@
             if(box) box.scrollTop = box.scrollHeight;
         }
 
-        document.getElementById('msg-input').addEventListener('focus', () => {
-            setTimeout(scrollToBottom, 300);
+        // بناء قائمة الإيموجي ديناميكياً
+        const emojis = ['😀','😃','😄','😁','😆','😅','😂','🤣','😊','😇','🙂','🙃','😉','😌','😍','🥰','😘','😗','😙','😚','😋','😛','😝','😜','🤪','🤨','🧐','🤓','😎','🤩','🥳','😏','😒','😞','😔','😟','😕','🙁','☹️','😣','😖','😫','😩','🥺','😢','😭','😤','😠','😡','🤬','🤯','😳','🥵','🥶','😱','😨','😰','😥','😓','🤗','🤔','🤭','🤫','🤥','😶','😐','😑','😬','🙄','😯','😦','😧','😮','😲','🥱','😴','🤤','😪','😵','🤐','🥴','🤢','🤮','🤧','😷','🤒','🤕'];
+        const picker = document.getElementById('emojiPicker');
+        emojis.forEach(emoji => {
+            const span = document.createElement('span');
+            span.className = 'emoji-item';
+            span.innerText = emoji;
+            span.onclick = () => {
+                document.getElementById('msg-input').value += emoji;
+                picker.classList.add('hidden');
+            };
+            picker.appendChild(span);
         });
 
-        document.getElementById('msg-input').addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') sendMessageDirectly();
-        });
+        function toggleEmojiPicker() {
+            picker.classList.toggle('hidden');
+        }
     </script>
     <script src="client.js"></script>
 </body>
