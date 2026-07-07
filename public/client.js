@@ -1,22 +1,34 @@
-// 🌐 ربط الـ Socket.io وتحديد المتغيرات الأساسية للمستخدم
 const socket = io();
-let currentChatTarget = 'group'; // الافتراضي الشات الجماعي
-let currentUserId = localStorage.getItem('userId') || ''; // معرف المستخدم الحالي من الـ LocalStorage
+let currentChatTarget = 'group'; 
+let currentUserId = localStorage.getItem('userId') || ''; 
 
-// ----------------------------------------------------
-// 👥 1. تحديث قائمة المستخدمين الحقيقيين بالشبكة الثلاثية (Grid)
-// ----------------------------------------------------
+// عند بدء التشغيل: جلب بيانات الملف الشخصي الحالية لعرض الصورة والاسم
+function loadUserProfile() {
+    fetch('/api/user/profile')
+        .then(res => res.json())
+        .then(user => {
+            if (user) {
+                if(document.getElementById('prof-name')) document.getElementById('prof-name').value = user.name || '';
+                if(document.getElementById('prof-birth')) document.getElementById('prof-birth').value = user.age || '';
+                if(user.avatar && document.getElementById('prof-avatar')) {
+                    document.getElementById('prof-avatar').src = user.avatar;
+                }
+            }
+        })
+        .catch(err => console.error("خطأ في جلب بيانات الملف الشخصي:", err));
+}
+loadUserProfile();
+
+// 👥 تحديث قائمة المستخدمين المتصلين ديناميكياً بالشكل الشبكي
 socket.on('updateUsers', (users) => {
     const usersList = document.getElementById('users-list');
     if (!usersList) return;
     
-    usersList.innerHTML = ''; // تنظيف القائمة لاستقبال البيانات الحية
+    usersList.innerHTML = ''; 
 
     users.forEach(user => {
-        // تخطي حسابك الشخصي حتى لا تظهر في قائمة أصدقائك
         if (user._id === currentUserId) return; 
 
-        // بناء كرت المستخدم الشبكي الحقيقي بناءً على بيانات السيرفر
         const userCard = `
             <div class="user-grid-card" onclick="openPrivateChat('${user.name}', '${user._id}')">
                 <div class="online-badge"></div>
@@ -31,25 +43,19 @@ socket.on('updateUsers', (users) => {
     });
 });
 
-// ----------------------------------------------------
-// 🔐 2. فتح المحادثات الخاصة وجلب الأرشيف الحقيقي من السيرفر
-// ----------------------------------------------------
+// 🔐 فتح محادثة خاصة وجلب الأرشيف
 function openPrivateChat(username, userId) {
-    currentChatTarget = userId; // تغيير الوجهة لمعرف الشخص المختار
+    currentChatTarget = userId; 
     
-    // التبديل البصري للواجهات
     document.getElementById('screen-users').style.display = 'none';
     document.getElementById('screen-chats').style.display = 'none';
     document.getElementById('main-chat-screen').style.display = 'flex';
     
-    // تحديث الهيدر العلوي باسم الصديق
     document.getElementById('chat-title').innerText = `🔐 محادثة خاصة مع: ${username}`;
     
-    // تنظيف صندوق الرسائل القديم
     const box = document.getElementById('messages-box');
     box.innerHTML = `<div style="text-align:center; color:#94a3b8; font-size:12px; margin: 10px 0;">بداية المحادثة الآمنة مع ${username}</div>`;
     
-    // جلب أرشيف الخاص بينك وبينه عبر الـ API الحقيقي في مشروعك
     fetch(`/api/messages/private/${userId}`)
         .then(res => res.json())
         .then(messages => {
@@ -59,22 +65,18 @@ function openPrivateChat(username, userId) {
             });
             scrollToBottom();
         })
-        .catch(err => console.error("خطأ في جلب أرشيف الخاص:", err));
+        .catch(err => console.error("خطأ في جلب الأرشيف:", err));
 }
 
-// ----------------------------------------------------
-// 💬 3. معالجة إرسال واستقبال الرسائل النصية والوسائط
-// ----------------------------------------------------
+// 💬 دالة الإرسال الفوري للرسائل النصية والربط عبر السوكيت
 function sendMessageDirectly() {
     const input = document.getElementById('msg-input');
     if (!input) return;
     const messageText = input.value.trim();
     if (!messageText) return;
 
-    // عرض الرسالة في شاشتك فوراً لسرعة الاستجابة اللحظية
     appendMessage(messageText, 'mine');
 
-    // إرسال البيانات للسيرفر عبر السوكيت
     socket.emit('chatMessage', { 
         text: messageText, 
         to: currentChatTarget,
@@ -85,13 +87,10 @@ function sendMessageDirectly() {
     setTimeout(scrollToBottom, 50);
 }
 
-// استقبال كافة الرسائل الحية من السيرفر وعرضها فوراً
+// استقبال الرسائل الحية من السيرفر
 socket.on('message', (msg) => {
     if (msg.from === currentChatTarget || (currentChatTarget === 'group' && !msg.isPrivate)) {
         appendMessage(msg.text, 'others');
-    } else {
-        // تحديث تنبيهات قائمة المحادثات الجارية إذا كانت النافذة مغلقة
-        updateActiveChatsList(msg);
     }
 });
 
@@ -105,14 +104,7 @@ function appendMessage(text, type) {
     scrollToBottom();
 }
 
-function scrollToBottom() {
-    const box = document.getElementById('messages-box');
-    if (box) box.scrollTop = box.scrollHeight;
-}
-
-// ----------------------------------------------------
-// 📷 4. ميزة إرسال الصور والكاميرا المباشرة
-// ----------------------------------------------------
+// 📷 رفع وإرسال الصور من الكاميرا أو المعرض
 const sendImageInput = document.getElementById('send-image');
 if (sendImageInput) {
     sendImageInput.addEventListener('change', (e) => {
@@ -123,7 +115,6 @@ if (sendImageInput) {
         formData.append('image', file);
         formData.append('to', currentChatTarget);
 
-        // رفع الصورة للسيرفر عبر الـ API وإرسالها عبر السوكيت
         fetch('/api/messages/upload-image', {
             method: 'POST',
             body: formData
@@ -131,18 +122,14 @@ if (sendImageInput) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // عرض الصورة في صندوق الرسائل كمرفق
-                appendMessage(`📷 صورة: ${data.imageUrl}`, 'mine');
-                socket.emit('chatMessage', { text: `📷 صورة: ${data.imageUrl}`, to: currentChatTarget });
+                appendMessage(`📷 صورة المرفق`, 'mine');
+                socket.emit('chatMessage', { text: `📷 صورة المرفق`, to: currentChatTarget });
             }
-        })
-        .catch(err => console.error("خطأ في رفع الصورة:", err));
+        });
     });
 }
 
-// ----------------------------------------------------
-// 🎤 5. ميزة الفوكال (تسجيل وإرسال المقاطع الصوتية)
-// ----------------------------------------------------
+// 🎤 تسجيل وإرسال الفوكال الصوتي المباشر عبر المايك
 const voiceBtn = document.getElementById('voiceBtn');
 let mediaRecorder;
 let audioChunks = [];
@@ -151,13 +138,12 @@ let isRecording = false;
 if (voiceBtn) {
     voiceBtn.addEventListener('click', () => {
         if (!isRecording) {
-            // بدء التسجيل الصوتي
             navigator.mediaDevices.getUserMedia({ audio: true })
                 .then(stream => {
                     mediaRecorder = new MediaRecorder(stream);
                     mediaRecorder.start();
                     isRecording = true;
-                    voiceBtn.style.color = '#ef4444'; // تغيير لون المايك للأحمر أثناء التسجيل
+                    voiceBtn.style.color = '#ef4444'; 
                     audioChunks = [];
 
                     mediaRecorder.addEventListener("dataavailable", event => {
@@ -170,7 +156,6 @@ if (voiceBtn) {
                         formData.append('audio', audioBlob);
                         formData.append('to', currentChatTarget);
 
-                        // رفع الفوكال للسيرفر
                         fetch('/api/messages/upload-audio', {
                             method: 'POST',
                             body: formData
@@ -179,94 +164,61 @@ if (voiceBtn) {
                         .then(data => {
                             if (data.success) {
                                 appendMessage(`🎵 فوكال صوتي`, 'mine');
-                                socket.emit('chatMessage', { text: `🎵 فوكال صوتي: ${data.audioUrl}`, to: currentChatTarget });
                             }
                         });
                     });
                 })
-                .catch(err => console.error("لم يتم العثور على صلاحيات المايك:", err));
+                .catch(err => alert("يرجى تفعيل صلاحية الوصول إلى المايك لتسجيل الفوكال."));
         } else {
-            // إيقاف التسجيل وإرساله
             mediaRecorder.stop();
             isRecording = false;
-            voiceBtn.style.color = '#94a3b8'; // إعادة اللون الافتراضي
+            voiceBtn.style.color = '#94a3b8';
         }
     });
 }
 
-// ----------------------------------------------------
-// 📞 6. ميزة الاتصالات الجارية (صوت وفيديو WebRTC)
-// ----------------------------------------------------
-const audioCallBtn = document.getElementById('audioCallBtn');
-const videoCallBtn = document.getElementById('videoCallBtn');
-const endCallBtn = document.getElementById('endCallBtn');
-
-if (audioCallBtn) {
-    audioCallBtn.addEventListener('click', () => {
-        document.getElementById('video-container').classList.remove('hidden');
-        socket.emit('callUser', { userToCall: currentChatTarget, signalData: {}, from: currentUserId, type: 'audio' });
-    });
-}
-
-if (videoCallBtn) {
-    videoCallBtn.addEventListener('click', () => {
-        document.getElementById('video-container').classList.remove('hidden');
-        socket.emit('callUser', { userToCall: currentChatTarget, signalData: {}, from: currentUserId, type: 'video' });
-    });
-}
-
-if (endCallBtn) {
-    endCallBtn.addEventListener('click', () => {
-        document.getElementById('video-container').classList.add('hidden');
-        socket.emit('endCall', { to: currentChatTarget });
-    });
-}
-
-// الاستماع لإشارات الاتصال الواردة من السيرفر
-socket.on('callIncoming', (data) => {
-    if(confirm(`اتصال ${data.type} وارد من مستخدم آخر، هل تقبل؟`)) {
-        document.getElementById('video-container').classList.remove('hidden');
-        socket.emit('answerCall', { signal: {}, to: data.from });
-    }
+// 📞 أزرار الاتصال الصوتي والمرئي (WebRTC)
+document.getElementById('audioCallBtn').addEventListener('click', () => {
+    socket.emit('callUser', { userToCall: currentChatTarget, type: 'audio' });
+});
+document.getElementById('videoCallBtn').addEventListener('click', () => {
+    socket.emit('callUser', { userToCall: currentChatTarget, type: 'video' });
 });
 
-socket.on('callEnded', () => {
-    document.getElementById('video-container').classList.add('hidden');
-});
+// 👤 حفظ تعديلات الملف الشخصي ورفع الصورة الجديدة للبروفايل الشخصي فوراً
+const updateAvatarInput = document.getElementById('update-avatar');
+if(updateAvatarInput) {
+    updateAvatarInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if(!file) return;
+        const formData = new FormData();
+        formData.append('avatar', file);
 
-// ----------------------------------------------------
-// 👤 7. حفظ التعديلات للملَّف الشخصي (العمر النصي المرن)
-// ----------------------------------------------------
-const saveProfileBtn = document.getElementById('saveProfileBtn');
-if (saveProfileBtn) {
-    saveProfileBtn.addEventListener('click', () => {
-        const name = document.getElementById('prof-name').value;
-        const age = document.getElementById('prof-birth').value; // جلب النص مثل "16-17" أو "22"
-
-        fetch('/api/user/update-profile', {
+        fetch('/api/user/upload-avatar', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, age })
+            body: formData
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success) {
-                alert('تم حفظ التعديلات بنجاح! 🎉');
-            } else {
-                alert('حدث خطأ أثناء حفظ البيانات القديمة.');
+            if(data.success) {
+                document.getElementById('prof-avatar').src = data.avatarUrl;
+                alert('تم تحديث الصورة الشخصية بنجاح! 📸');
             }
-        })
-        .catch(err => console.error("خطأ في تحديث البيانات الشخصية:", err));
+        });
     });
 }
 
-// دالة مرجعية لتحديث قائمة المحادثات الجارية في القائمة الجانبية
-function updateActiveChatsList(msg) {
-    const chatsList = document.getElementById('active-chats-list');
-    if (!chatsList) return;
-}
+document.getElementById('saveProfileBtn').addEventListener('click', () => {
+    const name = document.getElementById('prof-name').value;
+    const age = document.getElementById('prof-birth').value; 
 
-// عند تحميل الصفحة تأكد من النزول لأسفل الشات تلقائياً
-window.onload = () => {
-    scrollToBottom();
-};
+    fetch('/api/user/update-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, age })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) alert('تم حفظ التعديلات بنجاح! 🎉');
+    });
+});
