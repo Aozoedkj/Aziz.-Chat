@@ -1,1 +1,81 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة الدردشة للأصدقاء - الدخول</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+    <div class="auth-container">
+        <div id="login-box">
+            <h2>تسجيل الدخول</h2>
+            <input type="email" id="login-email" placeholder="البريد الإلكتروني">
+            <input type="password" id="login-pass" placeholder="كلمة السر">
+            <button onclick="login()">دخول</button>
+            <p>ليس لديك حساب؟ <span onclick="toggleAuth(false)">أنشيء حساباً الآن</span></p>
+        </div>
+
+        <div id="register-box" class="hidden">
+            <h2>إنشاء حساب جديد</h2>
+            <div class="avatar-upload">
+                <img id="avatar-preview" src="https://via.placeholder.com/100" alt="صورة افتراضية">
+                <input type="file" id="reg-avatar" accept="image/*" onchange="previewImage(event)">
+            </div>
+            <input type="text" id="reg-name" placeholder="الاسم الكامل">
+            <input type="email" id="reg-email" placeholder="البريد الإلكتروني">
+            <input type="password" id="reg-pass" placeholder="كلمة السر">
+            <input type="date" id="reg-birthday" placeholder="تاريخ الميلاد">
+            <button onclick="register()">إنشاء وتأكيد الحساب</button>
+            <p>لديك حساب بالفعل؟ <span onclick="toggleAuth(true)">سجل دخولك</span></p>
+        </div>
+    </div>
+
+    <script>
+        let base64Avatar = "";
+        function toggleAuth(showLogin) {
+            document.getElementById('login-box').classList.toggle('hidden', !showLogin);
+            document.getElementById('register-box').classList.toggle('hidden', showLogin);
+        }
+        function previewImage(event) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                document.getElementById('avatar-preview').src = reader.result;
+                base64Avatar = reader.result;
+            }
+            if(event.target.files[0]) reader.readAsDataURL(event.target.files[0]);
+        }
+        async function register() {
+            const name = document.getElementById('reg-name').value;
+            const email = document.getElementById('reg-email').value;
+            const password = document.getElementById('reg-pass').value;
+            const birthday = document.getElementById('reg-birthday').value;
+            if(!name || !email || !password) return alert("الرجاء ملء الخانات الأساسية");
+            
+            const res = await fetch('/api/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, email, password, birthday, avatar: base64Avatar })
+            });
+            const data = await res.json();
+            if(data.success) { alert("تم إنشاء حسابك بنجاح!"); toggleAuth(true); }
+            else alert(data.error);
+        }
+        async function login() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-pass').value;
+            const res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ email, password })
+            });
+            const data = await res.json();
+            if(data.success) {
+                localStorage.setItem('chat_user', JSON.stringify(data.user));
+                window.location.href = '/dashboard.html';
+            } else alert(data.error);
+        }
+    </script>
+</body>
+</html>
 
