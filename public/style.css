@@ -1,70 +1,198 @@
-body { font-family: system-ui, -apple-system, sans-serif; margin: 0; background: #f0f2f5; direction: rtl; height: 100vh; overflow: hidden;}
+/* الإعدادات العامة للموقع */
+body { 
+    font-family: system-ui, -apple-system, sans-serif; 
+    margin: 0; 
+    background: #0f172a; /* خلفية داكنة فخمة */
+    direction: rtl; 
+    height: 100vh; 
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
 .hidden { display: none !important; }
 
 /* شاشات الدخول والخروج */
-.auth-body { display: flex; justify-content: center; align-items: center; height: 100vh; background: #e9ebee; }
-.auth-container { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); width: 340px; text-align: center; }
-.auth-container input, .tab-content input { width: 100%; padding: 12px; margin: 8px 0; box-sizing: border-box; border: 1px solid #ccd0d5; border-radius: 6px; }
-.auth-container button, .tab-content button { width: 100%; padding: 12px; background: #1877f2; color: white; border: none; cursor: pointer; border-radius: 6px; font-weight: bold; font-size: 15px; }
-.auth-container p span { color: #1877f2; cursor: pointer; font-weight: bold; }
+.auth-body { background: #0f172a; }
+.auth-container { 
+    background: #1e293b; 
+    padding: 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
+    width: 340px; 
+    text-align: center; 
+    color: white;
+}
+.auth-container h2 { margin-top: 0; color: #38bdf8; }
+.auth-container input, .tab-content input { 
+    width: 100%; 
+    padding: 12px; 
+    margin: 8px 0; 
+    box-sizing: border-box; 
+    border: 1px solid #334155; 
+    border-radius: 8px; 
+    background: #0f172a;
+    color: white;
+    outline: none;
+}
+.auth-container button, .tab-content button { 
+    width: 100%; 
+    padding: 12px; 
+    background: #0284c7; 
+    color: white; 
+    border: none; 
+    cursor: pointer; 
+    border-radius: 8px; 
+    font-weight: bold; 
+    font-size: 15px; 
+    margin-top: 10px;
+}
 
-.avatar-upload img { width: 90px; height: 90px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #1877f2; }
+/* 📱 هيكل محاكاة شاشة الهاتف (ملء الشاشة لكل نافذة) */
+.app-container { 
+    display: flex; 
+    flex-direction: column; 
+    height: 95vh; /* طول وعرض ممتازين للمعاينة ويشغلان مساحة الهاتف */
+    width: 430px; 
+    background: #1e293b; 
+    border-radius: 24px; 
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5); 
+    border: 4px solid #334155; 
+    overflow: hidden;
+    position: relative;
+}
 
-/* هيكلية المنصة الكلية */
-.app-container { display: flex; height: 100vh; width: 100vw; }
+/* مساحة الشات الرئيسية */
+.chat-area { 
+    display: flex; 
+    flex-direction: column; 
+    background: #0f172a; 
+    height: 100%;
+    width: 100%;
+}
 
-/* الشريط الأيمن الضيق */
-.sidebar-menu { width: 70px; background: #1c1e21; display: flex; flex-direction: column; align-items: center; padding-top: 20px; gap: 20px; }
-.menu-item { width: 45px; height: 45px; border-radius: 8px; display: flex; justify-content: center; align-items: center; font-size: 22px; cursor: pointer; color: #b0b3b8; position: relative; transition: 0.2s; }
-.menu-item:hover, .menu-item.active { background: #3a3b3c; color: #1877f2; }
-.logout { margin-top: auto; margin-bottom: 25px; color: #f02849; }
+/* الهيدر العلوي للأزرار */
+#chat-header { 
+    background: #1e293b; 
+    padding: 14px 15px; 
+    font-weight: bold; 
+    border-bottom: 1px solid #334155; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    color: white;
+    height: 50px;
+    box-sizing: border-box;
+}
+#chat-title { font-size: 14px; }
+#call-actions { display: flex; gap: 6px; }
 
-.menu-item .tooltip { position: absolute; right: 80px; background: #333; color: white; font-size: 12px; padding: 6px 10px; border-radius: 5px; opacity: 0; pointer-events: none; transition: 0.2s; white-space: nowrap; }
-.menu-item:hover .tooltip { opacity: 1; right: 65px; }
+.call-btn { 
+    border: none; 
+    padding: 5px 12px; 
+    border-radius: 20px; 
+    color: white; 
+    font-weight: bold; 
+    cursor: pointer; 
+    font-size: 11px; 
+}
+.audio-btn { background: #10b981; }
+.video-btn { background: #8b5cf6; }
 
-/* القائمة الوسطى */
-.sub-sidebar { width: 290px; background: white; border-left: 1px solid #e4e6eb; padding: 20px; box-sizing: border-box; overflow-y: auto; }
-.sub-sidebar h3 { margin-top: 0; padding-bottom: 10px; border-bottom: 1px solid #eee; color: #050505; }
+/* صندوق تدفق الرسائل */
+#messages-box { 
+    flex-grow: 1; 
+    padding: 15px; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+}
+.message { 
+    background: #1e293b; 
+    color: white;
+    padding: 10px 14px; 
+    border-radius: 16px 16px 0px 16px; 
+    max-width: 75%; 
+    align-self: flex-start; 
+}
+.message.mine { 
+    background: #0284c7; 
+    align-self: flex-end; 
+    border-radius: 16px 16px 16px 0px; 
+}
 
-/* مساحة الشات الهيكلية */
-.chat-area { flex-grow: 1; display: flex; flex-direction: column; background: #f0f2f5; }
-#chat-header { background: white; padding: 15px 20px; font-weight: bold; border-bottom: 1px solid #e4e6eb; display: flex; justify-content: space-between; align-items: center; font-size: 16px; }
-#messages-box { flex-grow: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+/* شريط الكتابة السفلي */
+.chat-input-bar { 
+    background: #1e293b; 
+    padding: 10px; 
+    display: flex; 
+    gap: 6px; 
+    align-items: center; 
+    border-top: 1px solid #334155; 
+    height: 60px;
+    box-sizing: border-box;
+}
+.chat-input-bar input { 
+    flex-grow: 1; 
+    padding: 10px 14px; 
+    border-radius: 20px; 
+    border: 1px solid #334155; 
+    background: #0f172a; 
+    color: white;
+}
+.tool-btn { background: none; border: none; font-size: 18px; cursor: pointer; }
+.send-btn { background: #0284c7; color: white; border: none; padding: 8px 16px; border-radius: 20px; font-weight: bold; cursor: pointer; }
 
-.message { background: white; padding: 10px 14px; border-radius: 12px; max-width: 60%; align-self: flex-start; box-shadow: 0 1px 2px rgba(0,0,0,0.1); font-size: 14px; line-height: 1.4; word-break: break-word; }
-.message.mine { background: #0084ff; color: white; align-self: flex-end; }
+/* 🌟 السحر هنا: القائمة الفرعية تغطي كامل الشاشة فوق الشات */
+.sub-sidebar { 
+    position: absolute;
+    top: 0; /* تبدأ من أعلى الهاتف تماماً لتغطية الهيدر */
+    left: 0;
+    right: 0;
+    bottom: 60px; /* تترك فقط مساحة شريط التنقل السفلي */
+    background: #0f172a; /* نفس لون خلفية الشات لتبدو كنافذة مستقلة */
+    padding: 20px; 
+    box-sizing: border-box; 
+    overflow-y: auto; 
+    z-index: 5; /* يرفعها فوق الشات والرسائل بالكامل */
+    color: white;
+}
+.sub-sidebar h3 { margin-top: 0; padding-bottom: 12px; border-bottom: 1px solid #334155; color: #38bdf8; font-size: 18px; }
 
-/* شريط الإدخل السفلي */
-.chat-input-bar { background: white; padding: 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #e4e6eb; }
-.chat-input-bar input { flex-grow: 1; padding: 12px; border-radius: 22px; border: 1px solid #ccd0d5; outline: none; background: #f0f2f5; font-size: 14px; }
-.tool-btn { background: none; border: none; font-size: 20px; cursor: pointer; padding: 5px; }
-.send-btn { background: #1877f2; color: white; border: none; padding: 10px 22px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+/* قائمة الأصدقاء المستقلة */
+.user-item { display: flex; align-items: center; gap: 12px; padding: 12px; cursor: pointer; border-radius: 12px; background: #1e293b; margin-bottom: 8px; }
+.user-item:hover { background: #334155; }
+.user-item img, .avatar-large { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+.avatar-large { width: 90px; height: 90px; display: block; margin: 10px auto 15px auto; border: 2px solid #38bdf8; }
+.user-info { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; text-align: right; }
+.user-info strong { font-size: 14px; color: white; }
+.user-info span { font-size: 11px; color: #94a3b8; }
+.status-dot { width: 8px; height: 8px; border-radius: 50%; }
+.online { background: #10b981; }
+.offline { background: #64748b; }
 
-/* الأصدقاء والحالة المباشرة */
-.user-item { display: flex; align-items: center; gap: 12px; padding: 10px; cursor: pointer; border-radius: 6px; transition: 0.2s; }
-.user-item:hover { background: #f2f2f2; }
-.user-item img, .avatar-large { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; }
-.avatar-large { width: 90px; height: 90px; display: block; margin: 0 auto 15px auto; border: 2px solid #ddd; }
-.user-info { flex-grow: 1; display: flex; flex-direction: column; gap: 2px; }
-.user-info strong { font-size: 14px; color: #050505; }
-.user-info span { font-size: 11px; color: #65676b; }
-.status-dot { width: 10px; height: 10px; border-radius: 50%; }
-.online { background: #31a24c; }
-.offline { background: #ced0d4; }
+/* شريط التحكم السفلي المحاكي للتطبيقات الحقيقية */
+.sidebar-menu { 
+    height: 60px; 
+    width: 100%; 
+    background: #1e293b; 
+    display: flex; 
+    flex-direction: row; 
+    justify-content: space-around; 
+    align-items: center; 
+    border-top: 1px solid #334155;
+    padding: 0;
+    z-index: 6; /* يضمن بقاء أزرار التنقل ظاهرة دائماً بأسفل الشاشة */
+}
+.menu-item { width: 50px; height: 50px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 22px; cursor: pointer; color: #94a3b8; transition: 0.2s; }
+.menu-item:hover, .menu-item.active { background: #334155; color: #38bdf8; }
+.logout { color: #f43f5e; }
 
-/* أزرار الاتصال والمشغل */
-.call-btn { border: none; padding: 6px 14px; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; margin-left: 5px; font-size: 13px; }
-.audio-btn { background: #2ecc71; }
-.video-btn { background: #9b59b6; }
-
-#video-container { display: flex; gap: 10px; background: #000; padding: 15px; justify-content: center; align-items: center; }
-video { width: 220px; height: 160px; background: #222; border-radius: 6px; object-fit: cover; }
-#endCallBtn { background: #e74c3c; color: white; border: none; padding: 8px 18px; border-radius: 20px; cursor: pointer; font-weight: bold; }
-
-/* النوافذ المنبثقة */
-.modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 10; }
-.modal-content { background: white; padding: 25px; border-radius: 8px; width: 280px; text-align: center; }
-.modal-content img { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; }
-.modal-content button { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; }
-.modal-content .action-btn { background: #1877f2; color: white; }
-.modal-content .close-btn { background: #e4e6eb; color: #050505; }
+/* النوافذ المنبثقة التنبيهية */
+.modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10; }
+.modal-content { background: #1e293b; padding: 20px; border-radius: 16px; width: 260px; text-align: center; color: white; border: 1px solid #334155; }
+.modal-content img { width: 70px; height: 70px; border-radius: 50%; object-fit: cover; margin-bottom: 10px; border: 2px solid #38bdf8; }
+.modal-content button { width: 100%; padding: 10px; margin-top: 8px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+.modal-content .action-btn { background: #0284c7; color: white; }
+.modal-content .close-btn { background: #334155; color: white; }
