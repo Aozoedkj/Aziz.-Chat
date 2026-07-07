@@ -4,7 +4,9 @@ if (!currentUser) {
 }
 
 const socket = io();
-let currentChatTarget = 'group'; // 'group' أو بريد المستخدم المستهدف
+// ملاحظة: تم حذف "let currentChatTarget = 'group';" من هنا لأنها معرّفة مسبقاً
+// في السكريبت الداخلي بملف dashboard.html، وتعريفها مرتين كان يسبب خطأ
+// SyntaxError يوقف تنفيذ هذا الملف بالكامل.
 let allUsers = {};
 let onlineEmails = [];
 let allMessages = [];
@@ -66,10 +68,14 @@ function renderCurrentChat() {
 
 function openPrivateChat(username, email) {
     currentChatTarget = email;
-    document.getElementById('screen-users').style.display = 'none';
-    document.getElementById('screen-chats').style.display = 'none';
-    document.getElementById('main-chat-screen').style.display = 'flex';
-    document.getElementById('chat-title').innerText = `🔐 محادثة خاصة مع: ${username}`;
+    const screenUsers = document.getElementById('screen-users');
+    const screenChats = document.getElementById('screen-chats');
+    const mainChat = document.getElementById('main-chat-screen');
+    if (screenUsers) screenUsers.style.display = 'none';
+    if (screenChats) screenChats.style.display = 'none';
+    if (mainChat) mainChat.style.display = 'flex';
+    const chatTitle = document.getElementById('chat-title');
+    if (chatTitle) chatTitle.innerText = `🔐 محادثة خاصة مع: ${username}`;
     renderCurrentChat();
 }
 
@@ -174,6 +180,8 @@ if (voiceBtn) {
             voiceBtn.style.color = '#94a3b8';
         }
     });
+} else {
+    console.warn('⚠️ عنصر voiceBtn غير موجود في الصفحة الحالية');
 }
 
 // ☎️ مكالمات صوت/فيديو حقيقية عبر WebRTC (متوافقة مع أحداث server.js)
@@ -199,8 +207,21 @@ async function startCall(type) {
     socket.emit('call-user', { to: currentChatTarget, offer, type });
 }
 
-document.getElementById('audioCallBtn').addEventListener('click', () => startCall('audio'));
-document.getElementById('videoCallBtn').addEventListener('click', () => startCall('video'));
+// ⚠️ حماية: لا نسمح لعنصر مفقود بإيقاف باقي الكود (كان هذا سبب توقف كل شيء سابقاً)
+const audioCallBtn = document.getElementById('audioCallBtn');
+const videoCallBtn = document.getElementById('videoCallBtn');
+
+if (audioCallBtn) {
+    audioCallBtn.addEventListener('click', () => startCall('audio'));
+} else {
+    console.warn('⚠️ عنصر audioCallBtn غير موجود في الصفحة الحالية');
+}
+
+if (videoCallBtn) {
+    videoCallBtn.addEventListener('click', () => startCall('video'));
+} else {
+    console.warn('⚠️ عنصر videoCallBtn غير موجود في الصفحة الحالية');
+}
 
 socket.on('incoming-call', async (data) => {
     const accept = confirm(`مكالمة ${data.type === 'video' ? 'فيديو' : 'صوتية'} واردة من ${data.from}. الرد؟`);
@@ -256,20 +277,25 @@ if (updateAvatarInput) {
     });
 }
 
-document.getElementById('saveProfileBtn').addEventListener('click', async () => {
-    const name = document.getElementById('prof-name').value;
-    const birthday = document.getElementById('prof-birth').value;
-    const res = await fetch('/api/update-profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: currentUser.email, name, avatar: pendingAvatar || currentUser.avatar, birthday })
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+if (saveProfileBtn) {
+    saveProfileBtn.addEventListener('click', async () => {
+        const name = document.getElementById('prof-name').value;
+        const birthday = document.getElementById('prof-birth').value;
+        const res = await fetch('/api/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: currentUser.email, name, avatar: pendingAvatar || currentUser.avatar, birthday })
+        });
+        const data = await res.json();
+        if (data.success) {
+            currentUser.name = data.user.name;
+            currentUser.avatar = data.user.avatar;
+            currentUser.birthday = data.user.birthday;
+            localStorage.setItem('chat_user', JSON.stringify(currentUser));
+            alert('تم حفظ التعديلات بنجاح! 🎉');
+        }
     });
-    const data = await res.json();
-    if (data.success) {
-        currentUser.name = data.user.name;
-        currentUser.avatar = data.user.avatar;
-        currentUser.birthday = data.user.birthday;
-        localStorage.setItem('chat_user', JSON.stringify(currentUser));
-        alert('تم حفظ التعديلات بنجاح! 🎉');
-    }
-});
+} else {
+    console.warn('⚠️ عنصر saveProfileBtn غير موجود في الصفحة الحالية');
+}
