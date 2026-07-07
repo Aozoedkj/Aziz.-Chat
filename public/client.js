@@ -1,292 +1,142 @@
+// 🌐 ربط الـ Socket.io وتحديد المتغيرات الأساسية للمستخدم
 const socket = io();
-let currentUser = JSON.parse(localStorage.getItem('chat_user'));
-let currentChatTarget = 'group'; 
-let cachedMessages = [];
-let updatedAvatarBase64 = "";
+let currentChatTarget = 'group'; // الافتراضي هو الشات الجماعي
+let currentUserId = localStorage.getItem('userId') || ''; // معرف المستخدم الحالي المخزن
 
-if (!currentUser) window.location.href = '/index.html';
-
-socket.emit('go-online', currentUser.email);
-
-document.getElementById('prof-name').value = currentUser.name;
-document.getElementById('prof-birth').value = currentUser.birthday || '';
-document.getElementById('prof-avatar').src = currentUser.avatar || 'https://via.placeholder.com/100';
-
-function switchTab(tabName) {
-    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+// 1️⃣ تحديث قائمة المستخدمين المتصلين بالشبكة الثلاثية (Grid) فوراً من قاعدة البيانات
+socket.on('updateUsers', (users) => {
+    const usersList = document.getElementById('users-list');
+    if (!usersList) return;
     
-    document.getElementById(`tab-${tabName}`).classList.remove('hidden');
-    document.getElementById(`btn-${tabName}`).classList.add('active');
-    
-    if(tabName === 'group') {
-        currentChatTarget = 'group';
-        document.getElementById('chat-title').innerText = "الشات الجماعي العام للرفاق";
-        document.getElementById('call-actions').classList.add('hidden');
-        renderChatArchive();
-    }
-}
+    usersList.innerHTML = ''; // مسح القائمة القديمة
 
-function logout() {
-    localStorage.removeItem('chat_user');
-    window.location.href = '/index.html';
-}
+    users.forEach(user => {
+        // تخطي حسابك الشخصي حتى لا تظهر وتدردش مع نفسك
+        if (user._id === currentUserId) return; 
 
-socket.on('update-users-list', ({ users, onlineEmails }) => {
-    const listDiv = document.getElementById('users-list');
-    const activeChatsDiv = document.getElementById('active-chats-list');
-    listDiv.innerHTML = "";
-    activeChatsDiv.innerHTML = "";
-
-    Object.keys(users).forEach(email => {
-        if(email === currentUser.email) return;
-        const user = users[email];
-        const isOnline = onlineEmails.includes(email);
-        
-        const itemHtml = `
-            <div class="user-item">
-                <img src="${user.avatar || 'https://via.placeholder.com/40'}">
-                <div class="user-info">
-                    <strong>${user.name}</strong>
-                    <span>${isOnline ? 'متصل الآن' : 'غير متصل'}</span>
+        // إنشاء كرت المستخدم الشبكي الاحترافي (3 أعمدة)
+        const userCard = `
+            <div class="user-grid-card" onclick="openPrivateChat('${user.name}', '${user._id}')">
+                <div class="online-badge"></div>
+                <img src="${user.avatar || 'https://via.placeholder.com/150'}" alt="${user.name}">
+                <div class="user-grid-info">
+                    <span class="name">${user.name}</span>
+                    <span class="age">${user.age || ''}</span>
                 </div>
-                <span class="status-dot ${isOnline ? 'online' : 'offline'}"></span>
             </div>
         `;
-
-        const itemNode = document.createElement('div');
-        itemNode.innerHTML = itemHtml;
-        itemNode.firstElementChild.onclick = () => openUserModal(user, isOnline);
-        listDiv.appendChild(itemNode.firstElementChild);
-
-        const activeNode = document.createElement('div');
-        activeNode.innerHTML = itemHtml;
-        activeNode.firstElementChild.onclick = () => startPrivateChat(user);
-        activeChatsDiv.appendChild(activeNode.firstElementChild);
+        usersList.innerHTML += userCard;
     });
 });
 
-function openUserModal(user, isOnline) {
-    document.getElementById('modal-name').innerText = user.name;
-    document.getElementById('modal-avatar').src = user.avatar || 'https://via.placeholder.com/100';
-    
-    let ageText = "تاريخ الميلاد غير محدد";
-    if(user.birthday) {
-        const age = new Date().getFullYear() - new Date(user.birthday).getFullYear();
-        ageText = `العمر الحالي: ${age} عام`;
-    }
-    document.getElementById('modal-age').innerText = ageText;
-    
-    const chatBtn = document.getElementById('modal-chat-btn');
-    chatBtn.onclick = () => {
-        startPrivateChat(user);
-        closeModal();
-    };
-    
-    document.getElementById('user-modal').classList.remove('hidden');
-}
-
-function closeModal() { 
-    document.getElementById('user-modal').classList.add('hidden'); 
-}
-
-function startPrivateChat(user) {
-    currentChatTarget = user.email;
-    document.getElementById('chat-title').innerText = `المحادثة السرية مع: ${user.name}`;
-    document.getElementById('call-actions').classList.remove('hidden');
-    
-    document.getElementById('audioCallBtn').onclick = () => startCall(user.email, 'audio');
-    document.getElementById('videoCallBtn').onclick = () => startCall(user.email, 'video');
-    
-    renderChatArchive();
-}
-
-function sendMessage() {
-    const input = document.getElementById('msg-input');
-    if (!input.value.trim()) return;
-
-    const msgData = { from: currentUser.name, text: input.value, type: 'text', to: currentChatTarget };
-    if(currentChatTarget === 'group') {
-        socket.emit('group-message', msgData);
+// 2️⃣ استقبال كافة الرسائل الحية (سواء عامة أو خاصة) وعرضها فوراً دون ريفريش
+socket.on('message', (msg) => {
+    // التأكد من أن الرسالة تخص المحادثة المفتوحة حالياً أمامك
+    if (msg.from === currentChatTarget || (currentChatTarget === 'group' && !msg.isPrivate)) {
+        appendMessage(msg.text, 'others');
     } else {
-        socket.emit('private-message', msgData);
-    }
-    input.value = "";
-}
-
-socket.on('group-message', (data) => {
-    cachedMessages.push(data);
-    if(currentChatTarget === 'group') displayMessage(data);
-});
-
-socket.on('private-message', (data) => {
-    cachedMessages.push(data);
-    if(currentChatTarget === data.to || (data.to === currentUser.email && currentChatTarget === data.fromEmail)) {
-         displayMessage(data);
+        // إذا جاءتك رسالة من صديق والنافذة مغلقة، يتم تحديث قائمة المحادثات النشطة
+        updateActiveChatsList(msg);
     }
 });
 
-// استقبال وتحميل الأرشيف القديم من السيرفر وعرضه للهدف الحالي فقط
-socket.on('load-past-messages', ({ allPastMessages }) => {
-    cachedMessages = allPastMessages;
-    renderChatArchive();
-});
-
-function renderChatArchive() {
+// 3️⃣ دالة جلب وعرض رسائل الخاص الفورية عند الضغط على أي مستخدم (مثل فلات)
+function openPrivateChat(username, userId) {
+    currentChatTarget = userId; // تحويل وجهة الإرسال إلى معرف هذا الشخص
+    
+    // التبديل البصري الفوري بين الواجهات
+    document.getElementById('screen-users').style.display = 'none';
+    document.getElementById('screen-chats').style.display = 'none';
+    document.getElementById('main-chat-screen').style.display = 'flex';
+    
+    // تحديث هيدر الشات باسم الصديق
+    document.getElementById('chat-title').innerText = `🔐 محادثة خاصة مع: ${username}`;
+    
+    // تنظيف صندوق الرسائل القديم وجلب الأرشيف من السيرفر
     const box = document.getElementById('messages-box');
-    box.innerHTML = "";
+    box.innerHTML = `<div style="text-align:center; color:#94a3b8; font-size:12px; margin: 10px 0;">بداية المحادثة الآمنة مع ${username}</div>`;
     
-    cachedMessages.forEach(data => {
-        if (data.to === 'group' && currentChatTarget === 'group') {
-            displayMessage(data);
-        } else if (currentChatTarget !== 'group' && 
-                ((data.to === currentChatTarget && data.fromEmail === currentUser.email) || 
-                 (data.to === currentUser.email && data.fromEmail === currentChatTarget))) {
-            displayMessage(data);
-        }
-    });
-}
-
-function displayMessage(data) {
-    const box = document.getElementById('messages-box');
-    const msgEl = document.createElement('div');
-    msgEl.className = `message ${data.from === currentUser.name ? 'mine' : ''}`;
-    
-    if (data.type === 'text') {
-        msgEl.innerText = `${data.from}: ${data.text}`;
-    } else if (data.type === 'image') {
-        msgEl.innerHTML = `${data.from}: <br><img src="${data.file}" style="max-width:220px; border-radius:8px; margin-top:5px;">`;
-    } else if (data.type === 'audio') {
-        msgEl.innerHTML = `${data.from}: <br><audio src="${data.file}" controls style="margin-top:5px; max-width: 100%;"></audio>`;
-    }
-    
-    box.appendChild(msgEl);
-    box.scrollTop = box.scrollHeight;
-}
-
-function sendImageMessage(event) {
-    const file = event.target.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = function() {
-        const msgData = { from: currentUser.name, file: reader.result, type: 'image', to: currentChatTarget };
-        if(currentChatTarget === 'group') socket.emit('group-message', msgData);
-        else socket.emit('private-message', msgData);
-    }
-    reader.readAsDataURL(file);
-}
-
-let mediaRecorder;
-let audioChunks = [];
-function triggerAudioRecord() {
-    if (!mediaRecorder || mediaRecorder.state === "inactive") {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-            mediaRecorder = new MediaRecorder(stream);
-            mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
-            mediaRecorder.onstop = () => {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/ogg' });
-                const reader = new FileReader();
-                reader.onloadend = () => {
-                    const msgData = { from: currentUser.name, file: reader.result, type: 'audio', to: currentChatTarget };
-                    if(currentChatTarget === 'group') socket.emit('group-message', msgData);
-                    else socket.emit('private-message', msgData);
-                };
-                reader.readAsDataURL(audioBlob);
-                audioChunks = [];
-            };
-            mediaRecorder.start();
-            alert("بدأ تسجيل رسالتك الصوتية الآن 🎤.. اضغط على زر المايك مرة أخرى لإنهائها وإرسالها فوراً.");
-        }).catch(() => alert("يرجى إعطاء صلاحية الميكروفون للموقع"));
-    } else {
-        mediaRecorder.stop();
-    }
-}
-
-function previewUpdateAvatar(e) {
-    const reader = new FileReader();
-    reader.onload = () => {
-        document.getElementById('prof-avatar').src = reader.result;
-        updatedAvatarBase64 = reader.result;
-    }
-    if(e.target.files[0]) reader.readAsDataURL(e.target.files[0]);
-}
-
-async function updateProfile() {
-    const res = await fetch('/api/update-profile', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-            email: currentUser.email,
-            name: document.getElementById('prof-name').value,
-            birthday: document.getElementById('prof-birth').value,
-            avatar: updatedAvatarBase64 || currentUser.avatar
+    fetch(`/api/messages/private/${userId}`)
+        .then(res => res.json())
+        .then(messages => {
+            messages.forEach(msg => {
+                const type = (msg.senderId === currentUserId) ? 'mine' : 'others';
+                appendMessage(msg.text, type);
+            });
+            scrollToBottom();
         })
+        .catch(err => console.error("خطأ في جلب أرشيف الخاص:", err));
+}
+
+// 4️⃣ دالة إرسال الرسالة المباشرة من حقل الإدخال
+function sendMessageDirectly() {
+    const input = document.getElementById('msg-input');
+    if (!input) return;
+    const messageText = input.value.trim();
+    if (!messageText) return;
+
+    // عرض رسالتك في شاشتك فوراً لسرعة الاستجابة اللحظية
+    appendMessage(messageText, 'mine');
+
+    // إرسال الإشارة للسيرفر عبر السوكيت
+    socket.emit('chatMessage', { 
+        text: messageText, 
+        to: currentChatTarget,
+        isPrivate: currentChatTarget !== 'group'
     });
-    const data = await res.json();
-    if(data.success) {
-        localStorage.setItem('chat_user', JSON.stringify(data.user));
-        currentUser = data.user;
-        alert("تم تحديث بيانات حسابك!");
-    }
+
+    input.value = '';
+    setTimeout(scrollToBottom, 50);
 }
 
-// --- منظومة الاتصالات WebRTC ---
-let localStream, peerConnection;
-const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-async function startCall(targetEmail, type) {
-    document.getElementById('video-container').classList.remove('hidden');
-    localStream = await navigator.mediaDevices.getUserMedia({ video: type==='video', audio: true });
-    document.getElementById('localVideo').srcObject = localStream;
-
-    peerConnection = new RTCPeerConnection(rtcConfig);
-    localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-    peerConnection.onicecandidate = e => {
-        if(e.candidate) socket.emit('ice-candidate', { to: targetEmail, candidate: e.candidate });
-    };
-    peerConnection.ontrack = e => {
-        document.getElementById('remoteVideo').srcObject = e.streams[0];
-    };
-
-    const offer = await peerConnection.createOffer();
-    await peerConnection.setLocalDescription(offer);
-    socket.emit('call-user', { to: targetEmail, offer, type });
+// 5️⃣ إضافة الرسائل هيكلياً داخل الصندوق والنزول لأسفل الشاشة
+function appendMessage(text, type) {
+    const box = document.getElementById('messages-box');
+    if (!box) return;
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `message ${type}`;
+    msgDiv.innerText = text;
+    box.appendChild(msgDiv);
+    scrollToBottom();
 }
 
-socket.on('incoming-call', async (data) => {
-    if(confirm(`لديك اتصال وارد من ${data.from} (${data.type === 'video' ? 'مرئي' : 'صوتي'}). هل تود القبول؟`)) {
-        document.getElementById('video-container').classList.remove('hidden');
-        localStream = await navigator.mediaDevices.getUserMedia({ video: data.type==='video', audio: true });
-        document.getElementById('localVideo').srcObject = localStream;
-
-        peerConnection = new RTCPeerConnection(rtcConfig);
-        localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-        peerConnection.onicecandidate = e => {
-            if(e.candidate) socket.emit('ice-candidate', { to: data.from, candidate: e.candidate });
-        };
-        peerConnection.ontrack = e => {
-            document.getElementById('remoteVideo').srcObject = e.streams[0];
-        };
-
-        await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
-        socket.emit('answer-call', { to: data.from, answer });
-    }
-});
-
-socket.on('call-answered', async (data) => {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-});
-
-socket.on('ice-candidate', async (data) => {
-    if(peerConnection && data.candidate) await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate));
-});
-
-function endCall() {
-    if(localStream) localStream.getTracks().forEach(track => track.stop());
-    document.getElementById('video-container').classList.add('hidden');
-    alert("تم إنهاء المكالمة الحالية.");
+function scrollToBottom() {
+    const box = document.getElementById('messages-box');
+    if (box) box.scrollTop = box.scrollHeight;
 }
+
+// 6️⃣ حفظ تعديلات الملف الشخصي (الاسم الكامل والعمر النصي المرن)
+const saveProfileBtn = document.getElementById('saveProfileBtn');
+if (saveProfileBtn) {
+    saveProfileBtn.addEventListener('click', () => {
+        const name = document.getElementById('prof-name').value;
+        const age = document.getElementById('prof-birth').value; // يدعم نصوص مثل "16-17"
+
+        fetch('/api/user/update-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, age })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('تم حفظ التعديلات بنجاح! 🎉');
+            } else {
+                alert('حدث خطأ أثناء حفظ البيانات.');
+            }
+        })
+        .catch(err => console.error("خطأ في تحديث الملف الشخصي:", err));
+    });
+}
+
+// دالة مرجعية لتحديث المحادثات الجارية في القائمة الجانبية
+function updateActiveChatsList(msg) {
+    const chatsList = document.getElementById('active-chats-list');
+    if (!chatsList) return;
+    // هنا يتم تكرار وتحديث المحادثات النشطة حسب الرغبة لاحقاً
+}
+
+// عند تحميل الصفحة تأكد من النزول لأسفل الشات التلقائي
+window.onload = () => {
+    scrollToBottom();
+};
